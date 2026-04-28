@@ -1,0 +1,96 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Django: Makemigrations",
+      "type": "shell",
+      "command": ".venv\\Scripts\\python.exe",
+      "args": ["manage.py", "makemigrations"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Django: Migrate",
+      "type": "shell",
+      "command": ".venv\\Scripts\\python.exe",
+      "args": ["manage.py", "migrate"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Django: Runserver",
+      "type": "shell",
+      "command": ".venv\\Scripts\\python.exe",
+      "args": ["manage.py", "runserver"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "isBackground": true
+    },
+    {
+      "label": "Django: Createsuperuser",
+      "type": "shell",
+      "command": ".venv\\Scripts\\python.exe",
+      "args": ["manage.py", "createsuperuser"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Django: Shell",
+      "type": "shell",
+      "command": ".venv\\Scripts\\python.exe",
+      "args": ["manage.py", "shell"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Docker: Up",
+      "type": "shell",
+      "command": "docker-compose",
+      "args": ["up", "-d"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Docker: Down",
+      "type": "shell",
+      "command": "docker-compose",
+      "args": ["down"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Docker: Logs",
+      "type": "shell",
+      "command": "docker-compose",
+      "args": ["logs", "-f", "postgres"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "isBackground": true
+    }
+  ]
+}
+
