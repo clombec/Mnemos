@@ -91,9 +91,50 @@
             background: #e0e0e0;
             border-color: #999;
         }
+
+        .topbar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.9em;
+            color: rgba(255,255,255,0.9);
+        }
+
+        .topbar span {
+            font-weight: 600;
+        }
+
+        .btn-logout {
+            padding: 6px 14px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 6px;
+            font-size: 0.85em;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.2s ease;
+        }
+
+        .btn-logout:hover {
+            background: rgba(255,255,255,0.35);
+        }
     </style>
 </head>
 <body>
+    <div class="topbar">
+        <span>{{ request.user.username }}</span>
+        <form method="post" action="{% url 'kb:logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn-logout">Déconnexion</button>
+        </form>
+    </div>
+
     <div class="container">
         <div class="logo">
             <img src="{% static 'kb/images/mnemoslogo1.png' %}" alt="Mnemos Logo">
@@ -105,8 +146,7 @@
         </p>
 
         <div class="links">
-            <a href="/admin/" class="btn-primary">Administration</a>
-            <a href="/" class="btn-secondary">Accueil</a>
+            <a href="/admin/" class="btn-secondary">Administration</a>
         </div>
     </div>
 </body>
