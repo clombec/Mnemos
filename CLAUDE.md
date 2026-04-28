@@ -2,39 +2,67 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Projet : Mnemos — Base de Connaissance IA Locale
+## Project: Mnemos — Local AI Knowledge Base
 
-Application web **100% locale** permettant à une entreprise d'enregistrer des procédures et de les restituer via une interface conversationnelle IA. Aucune donnée ne transite par internet.
+A **100% local** web application allowing a company to store internal procedures and retrieve them via a conversational AI interface. No data leaves the machine.
 
 ---
 
-## Commandes de développement
+## Setup on a new machine
+
+### Prerequisites
+- Python 3.12+, Docker Desktop, Ollama
+
+### Installation
 
 ```bash
-# Installer les dépendances
+# 1. Clone the repo and create the virtual environment
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+
+# 2. Install dependencies
 pip install django djangorestframework psycopg2-binary pgvector httpx Pillow
 
-# Initialiser le projet (à faire une seule fois)
-django-admin startproject mnemos .
-python manage.py startapp kb
+# 3. Create the .env file (not committed — see structure below)
 
-# Migrations et démarrage
-python manage.py makemigrations
+# 4. Start PostgreSQL
+docker compose up -d
+
+# 5. Create PostgreSQL extensions (once per volume)
+docker exec mnemos-postgres psql -U postgres -d mnemos_dev -c "CREATE EXTENSION IF NOT EXISTS vector;"
+docker exec mnemos-postgres psql -U postgres -d mnemos_dev -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+
+# 6. Run migrations and create a Django superuser
 python manage.py migrate
-python manage.py runserver
-
-# Créer un superuser
 python manage.py createsuperuser
 
-# Lancer les tests
+# 7. Start the dev server
+python manage.py runserver
+```
+
+### `.env` file structure (create manually, never commit)
+
+```
+SECRET_KEY=<generate with: python -c "from django.utils.crypto import get_random_string; print(get_random_string(50))">
+DB_NAME=mnemos_dev
+DB_USER=postgres
+DB_PASSWORD=<postgres superuser password>
+DB_HOST=localhost
+DB_PORT=5432
+POSTGRES_SUPERUSER=postgres
+POSTGRES_SUPERUSER_PASSWORD=<same password>
+```
+
+`settings.py` loads `.env` at startup with no external dependency (pure stdlib).
+
+### Common commands
+
+```bash
+# Run tests
 python manage.py test
-python manage.py test kb.tests.TestClassName.test_method  # test unique
+python manage.py test kb.tests.TestClassName.test_method
 
-# Extensions PostgreSQL requises (à activer une fois)
-# psql -d <dbname> -c "CREATE EXTENSION IF NOT EXISTS vector;"
-# psql -d <dbname> -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
-
-# Vérifier qu'Ollama tourne
+# Check Ollama is running
 curl http://localhost:11434/api/tags
 ```
 
@@ -44,55 +72,82 @@ curl http://localhost:11434/api/tags
 
 ### Stack
 
-- **Backend** : Python / Django + Django REST Framework
-- **BDD** : PostgreSQL + pgvector (vectoriel) + pg_trgm (full-text BM25)
-- **LLM** : Ollama local (`http://localhost:11434`)
-- **Frontend** : HTMX + Alpine.js (pas de SPA), templates Django
+| Layer | Technology |
+|---|---|
+| Backend | Python / Django 5.1 + Django REST Framework |
+| Database | PostgreSQL 15 + pgvector (vector search) + pg_trgm (full-text BM25) |
+| LLM | Ollama local (`http://localhost:11434`) |
+| Frontend | HTMX + Alpine.js — server-rendered templates, no SPA |
+| Infrastructure | Docker (PostgreSQL only) |
 
-### Structure d'application Django
+### Project structure
 
-Le projet Django s'appelle `mnemos`, l'app principale s'appelle `kb` (knowledge base).
+The Django project is named `mnemos`, the main app is `kb` (knowledge base).
 
 ```
-mnemos/          ← projet Django (settings, urls racine)
-kb/              ← app principale
-  models.py      ← Procedure, Chunk, Image
-  views.py       ← chat, ingestion
-  services/      ← logique métier : ollama.py, rag.py, ingestion.py
-  templates/kb/  ← HTML HTMX
+mnemos/                   ← Django project
+  settings.py             ← all configuration, loads .env at startup
+  urls.py                 ← root router: '' → kb.urls, 'admin/' → admin
+
+kb/                       ← main application
+  models.py               ← Procedure, Chunk, Image
+  views.py                ← home, login_view, logout_view (+ future: chat, ingestion)
+  urls.py                 ← app_name='kb', routes below
+  services/               ← business logic (to implement)
+    ollama.py             ← LLM calls
+    rag.py                ← hybrid search + reranking
+    ingestion.py          ← chunking + embedding
+  templates/kb/
+    home.html             ← main page (requires login), topbar with username + logout
+    login.html            ← standalone login form, no base template yet
 ```
 
-### Modèles de données
+### URL routing
+
+| URL | View | Auth required |
+|---|---|---|
+| `/` | `kb:home` | Yes |
+| `/login/` | `kb:login` | No |
+| `/logout/` | `kb:logout` (POST only) | No |
+| `/admin/` | Django admin | Yes (superuser) |
+
+### Data models
 
 ```
 Procedure  →  title, created_at, updated_at, created_by (FK User)
-Chunk      →  procedure (FK nullable), content, embedding (VectorField), chunk_index, created_at
+Chunk      →  procedure (FK nullable), content, embedding (VectorField 768d), chunk_index, created_at
 Image      →  chunk (FK), file (ImageField), caption, created_at
 ```
 
-Auth : système natif Django (User + Session). Toute vue nécessite `@login_required`.
+### Authentication
 
-### Pipeline RAG
+- Django native auth (User + Session)
+- Every view requires `@login_required`
+- `LOGIN_URL = 'kb:login'` in settings
+- Login redirects to `?next=` param if present, validated with `url_has_allowed_host_and_scheme`
+- Logout is POST-only (CSRF protection)
 
-Deux flux selon la classification du message entrant :
+### RAG pipeline
 
-**Question** → recherche hybride (vectorielle pgvector + BM25 pg_trgm) → 20 candidats → re-ranking → top 5 → prompt Ollama → réponse avec images
+Two flows based on message classification:
 
-**Apport d'info** → chunking sémantique → embedding → stockage PostgreSQL → ack silencieux (aucune réponse affichée)
+**Question** → hybrid search (pgvector + BM25 pg_trgm) → 20 candidates → reranking → top 5 → Ollama prompt → response with associated images
 
-Re-ranking : top 5 sur 20 candidats. Latence cible : ~4 s.
+**Information input** → semantic chunking → embedding → store in PostgreSQL → silent acknowledgment (no response displayed)
 
-### Configuration LLM
+Reranking: top 5 from 20 candidates. Target latency: ~4s.
 
-Dans `settings.py`, une seule variable à changer selon l'environnement :
+### LLM configuration
+
+One variable to change per environment in `settings.py`:
 
 ```python
-OLLAMA_MODEL = "qwen2.5:7b-instruct-q8_0"      # proto MacBook Air M4
-# OLLAMA_MODEL = "qwen2.5:14b-instruct-q4_K_M"  # prod RTX 3060
+OLLAMA_MODEL = "qwen2.5:7b-instruct-q8_0"      # dev — MacBook Air M4
+# OLLAMA_MODEL = "qwen2.5:14b-instruct-q4_K_M"  # prod — RTX 3060
 OLLAMA_BASE_URL = "http://localhost:11434"
 ```
 
-### Appel Ollama
+### Ollama call pattern
 
 ```python
 import httpx
@@ -117,21 +172,30 @@ def ask_ollama(system_prompt: str, user_message: str, model: str = None) -> str:
 
 ---
 
-## Contraintes critiques
+## Critical constraints
 
-- **Aucune API cloud** sans validation explicite — données sensibles (procédures internes)
-- **Authentification obligatoire** sur toutes les vues
-- **Export/import JSON** : procédures + embeddings + images base64 doivent être portables hors réseau
+- **No cloud API** without explicit validation — data is sensitive (internal procedures)
+- **Authentication required** on every view
+- **JSON export/import**: procedures + embeddings + base64 images must be portable offline
 
 ---
 
-## Phase 1 MVP — état d'avancement
+## Phase 1 MVP — progress
 
-- [ ] Auth Django (login/logout)
-- [ ] Interface conversationnelle (HTMX)
-- [ ] Classifieur question/info (prompt Ollama)
-- [ ] Ingestion : chunking + embedding + stockage pgvector
-- [ ] Recherche hybride vectorielle + full-text
-- [ ] Re-ranking des chunks candidats
-- [ ] Réponse avec images associées
-- [ ] Export / Import JSON
+- [x] Django auth (login/logout) — `@login_required` on all views, `LOGIN_URL = 'kb:login'`, secure `?next=` redirect
+- [ ] Conversational interface (HTMX)
+- [ ] Question/info classifier (Ollama prompt)
+- [ ] Ingestion: chunking + embedding + pgvector storage
+- [ ] Hybrid vector + full-text search
+- [ ] Candidate chunk reranking
+- [ ] Response with associated images
+- [ ] JSON export / import
+
+---
+
+## Technical notes
+
+- **Sessions**: `SESSION_ENGINE = 'django.contrib.sessions.backends.cache'` — avoids a DB hit on every request
+- **DB connection**: `CONN_MAX_AGE = 60` — reuses PostgreSQL connections to avoid WSL2/Docker TCP overhead on Windows (~2s per new connection)
+- **Credentials**: all in `.env` (not committed). `docker-compose.yml` reads via `${VAR}`. `settings.py` parses `.env` at startup without external libraries.
+- **PostgreSQL port**: bound to `127.0.0.1:5432` only — not exposed on the local network
