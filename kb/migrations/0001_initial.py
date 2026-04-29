@@ -11,6 +11,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+        ("kb", "0000_extensions"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
