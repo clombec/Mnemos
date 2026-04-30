@@ -1,0 +1,8 @@
+<div class="message user">{{ user_message }}</div>
+<div class="message thinking"
+     hx-get="{% url 'kb:chat_answer' %}?msg={{ user_message|urlencode }}"
+     hx-trigger="load"
+     hx-swap="outerHTML">
+    <span></span><span></span><span></span>
+    <small class="thinking-label">Classifying...</small>
+</div>

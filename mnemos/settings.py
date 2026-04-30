@@ -143,7 +143,8 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 
 # Ollama configuration
 OLLAMA_BASE_URL = 'http://localhost:11434'
-OLLAMA_MODEL = 'qwen2.5:7b-instruct-q8_0'  # Proto MacBook Air M4
+OLLAMA_MODEL = 'qwen2.5:7b-instruct-q4_K_M'
+OLLAMA_EMBED_MODEL = 'nomic-embed-text'
 
 # Django REST Framework
 REST_FRAMEWORK = {
