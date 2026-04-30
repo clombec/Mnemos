@@ -27,7 +27,7 @@
       "label": "Django: Runserver",
       "type": "shell",
       "command": ".venv\\Scripts\\python.exe",
-      "args": ["manage.py", "runserver"],
+      "args": ["manage.py", "runserver", "--nothreading"],
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",

@@ -11,7 +11,7 @@
             "request": "launch",
             "program": "manage.py",
             "console": "integratedTerminal",
-            "args": "runserver",
+            "args": ["runserver", "--nothreading"],
         }
     ]
 }
