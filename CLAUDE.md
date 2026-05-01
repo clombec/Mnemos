@@ -100,6 +100,10 @@ kb/                       ← main application
   templates/kb/
     home.html             ← main page (requires login), topbar with username + logout
     login.html            ← standalone login form, no base template yet
+    chat.html             ← full chat page (HTMX, messages list + input form)
+    chat_message.html     ← fragment: user bubble + classifying indicator (auto-triggers chat_answer)
+    chat_indicator.html   ← fragment: animated thinking dots (auto-triggers next_url)
+    chat_answer.html      ← fragment: assistant answer bubble
 ```
 
 ### URL routing
@@ -109,6 +113,9 @@ kb/                       ← main application
 | `/` | `kb:home` | Yes |
 | `/login/` | `kb:login` | No |
 | `/logout/` | `kb:logout` (POST only) | No |
+| `/chat/` | `kb:chat` (GET: page, POST: user message fragment) | Yes |
+| `/chat/answer/` | `kb:chat_answer` (GET: classify → ingest or thinking indicator) | Yes |
+| `/chat/think/` | `kb:chat_think` (GET: Ollama answer fragment) | Yes |
 | `/admin/` | Django admin | Yes (superuser) |
 
 ### Data models
@@ -142,8 +149,8 @@ Reranking: top 5 from 20 candidates. Target latency: ~4s.
 One variable to change per environment in `settings.py`:
 
 ```python
-OLLAMA_MODEL = "qwen2.5:7b-instruct-q8_0"      # dev — MacBook Air M4
-# OLLAMA_MODEL = "qwen2.5:14b-instruct-q4_K_M"  # prod — RTX 3060
+OLLAMA_MODEL = "qwen2.5:7b-instruct-q4_K_M"    # current — RTX 4060 8 Go
+OLLAMA_EMBED_MODEL = "nomic-embed-text"          # 768-dim embeddings
 OLLAMA_BASE_URL = "http://localhost:11434"
 ```
 
@@ -183,13 +190,13 @@ def ask_ollama(system_prompt: str, user_message: str, model: str = None) -> str:
 ## Phase 1 MVP — progress
 
 - [x] Django auth (login/logout) — `@login_required` on all views, `LOGIN_URL = 'kb:login'`, secure `?next=` redirect
-- [ ] Conversational interface (HTMX)
-- [ ] Question/info classifier (Ollama prompt)
-- [ ] Ingestion: chunking + embedding + pgvector storage
-- [ ] Hybrid vector + full-text search
-- [ ] Candidate chunk reranking
+- [x] Conversational interface (HTMX) — two-phase response: user bubble immediately, then Ollama async
+- [x] Question/info classifier (Ollama prompt) — `classify()` in `kb/services/ollama.py`, fast model
+- [x] Ingestion: chunking + embedding + pgvector storage — `kb/services/ingestion.py`
+- [x] Hybrid vector + full-text search — `kb/services/rag.py`, pgvector cosine + pg_trgm word_similarity
+- [x] Candidate chunk reranking — score = 0.7 × vec_sim + 0.3 × trgm_sim, top 5 from 20
 - [ ] Response with associated images
-- [ ] JSON export / import
+- [x] JSON export / import — `kb/services/io.py`, vues `export_view` + `import_view`, boutons dans `home.html`
 
 ---
 

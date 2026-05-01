@@ -38,6 +38,48 @@ class Chunk(models.Model):
         ordering = ['procedure', 'chunk_index']
 
 
+class ChunkSynthesis(models.Model):
+    """Mode 2 — content may be updated by LLM synthesis when similar info is provided.
+    source_text preserves the verbatim original before any synthesis."""
+    procedure = models.ForeignKey(
+        Procedure, on_delete=models.CASCADE,
+        related_name='synthesis_chunks', null=True, blank=True
+    )
+    content = models.TextField()
+    source_text = models.TextField()
+    embedding = VectorField(dimensions=768, null=True, blank=True)
+    chunk_index = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"[Synthesis] {self.chunk_index}: {self.content[:50]}..."
+
+    class Meta:
+        db_table = 'kb_chunk_synthesis'
+        ordering = ['procedure', 'chunk_index']
+
+
+class ChunkRewrite(models.Model):
+    """Mode 3 — content is LLM-reformulated at ingestion time.
+    source_text preserves the verbatim original."""
+    procedure = models.ForeignKey(
+        Procedure, on_delete=models.CASCADE,
+        related_name='rewrite_chunks', null=True, blank=True
+    )
+    content = models.TextField()
+    source_text = models.TextField()
+    embedding = VectorField(dimensions=768, null=True, blank=True)
+    chunk_index = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"[Rewrite] {self.chunk_index}: {self.content[:50]}..."
+
+    class Meta:
+        db_table = 'kb_chunk_rewrite'
+        ordering = ['procedure', 'chunk_index']
+
+
 class Image(models.Model):
     """Image associée à un chunk"""
     chunk = models.ForeignKey(

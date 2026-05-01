@@ -92,6 +92,42 @@
             border-color: #999;
         }
 
+        .io-section {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn-sm {
+            padding: 7px 18px;
+            font-size: 0.85em;
+        }
+
+        .import-label {
+            display: inline-block;
+            padding: 7px 18px;
+            background: #f0f0f0;
+            color: #333;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.85em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .import-label:hover {
+            background: #e0e0e0;
+            border-color: #999;
+        }
+
+        #import-file { display: none; }
+
         .topbar {
             position: fixed;
             top: 0;
@@ -148,6 +184,16 @@
         <div class="links">
             <a href="{% url 'kb:chat' %}" class="btn-primary">Ouvrir le chat</a>
             <a href="/admin/" class="btn-secondary">Administration</a>
+        </div>
+
+        <div class="io-section">
+            <a href="{% url 'kb:export' %}" class="btn-secondary btn-sm">Exporter la base</a>
+            <form method="post" action="{% url 'kb:import' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <label class="import-label" for="import-file">Importer un export</label>
+                <input id="import-file" type="file" name="file" accept=".json"
+                       onchange="this.form.submit()">
+            </form>
         </div>
     </div>
 </body>

@@ -31,12 +31,14 @@ def embed(text: str) -> list[float]:
 
 
 def classify(message: str) -> str:
-    """Returns 'question' or 'info'."""
+    """Returns 'question', 'info', or 'unclear'."""
     system_prompt = (
         "You are a message classifier. "
         "Respond with exactly one word: 'question' if the user is asking something, "
-        "'info' if the user is providing information or a procedure to store. "
+        "'info' if the user is providing information or a procedure to store, "
+        "'unclear' if the intent is not clear or not understandable."
+        "An information or procedure must contain at least one actionable instruction to be classified as 'info'. "
         "No punctuation, no explanation."
     )
     result = ask_ollama(system_prompt, message, model=settings.OLLAMA_MODEL).strip().lower()
-    return result if result in ("question", "info") else "question"
+    return result if result in ("question", "info", "unclear") else "unclear"

@@ -7,6 +7,14 @@
     <title>Mnemos - Chat</title>
     <link rel="icon" type="image/png" href="{% static 'kb/images/mnemoslogo1.png' %}">
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script>
+        // Inject Django CSRF token into every HTMX request
+        document.addEventListener('htmx:configRequest', function(evt) {
+            const match = document.cookie.split(';')
+                .map(c => c.trim()).find(c => c.startsWith('csrftoken='));
+            if (match) evt.detail.headers['X-CSRFToken'] = match.split('=')[1];
+        });
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -58,6 +66,34 @@
         }
 
         .btn-logout:hover { background: rgba(255,255,255,0.35); }
+
+        .mode-toggle {
+            display: flex;
+            gap: 4px;
+            background: rgba(0,0,0,0.15);
+            border-radius: 8px;
+            padding: 3px;
+        }
+
+        .mode-btn {
+            padding: 4px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.8em;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            color: rgba(255,255,255,0.7);
+            background: transparent;
+            transition: all 0.15s;
+        }
+
+        .mode-btn.active {
+            background: rgba(255,255,255,0.25);
+            color: white;
+        }
+
+        .mode-btn:not(.active):hover { color: white; }
 
         #messages {
             flex: 1;
@@ -177,6 +213,18 @@
             Mnemos
         </div>
         <div class="user">
+            <div class="mode-toggle" id="mode-toggle">
+                {% for key, mode in kb_modes.items %}
+                <button class="mode-btn {% if key == current_mode %}active{% endif %}"
+                        title="{{ mode.description }}"
+                        hx-post="{% url 'kb:set_mode' %}"
+                        hx-vals='{"mode": "{{ key }}"}'
+                        hx-swap="none"
+                        onclick="setActiveMode(this)">
+                    {{ mode.label }}
+                </button>
+                {% endfor %}
+            </div>
             <span>{{ request.user.username }}</span>
             <form method="post" action="{% url 'kb:logout' %}">
                 {% csrf_token %}
@@ -198,5 +246,35 @@
             <button type="submit">Envoyer</button>
         </form>
     </div>
+    <script>
+        const messages = document.getElementById('messages');
+
+        document.body.addEventListener('htmx:beforeRequest', function(evt) {
+            const form = evt.detail.elt;
+            if (!form.classList.contains('input-form')) return;
+            const msg = form.querySelector('input[name="message"]').value.trim();
+            if (!msg) return;
+            const bubble = document.createElement('div');
+            bubble.className = 'message user';
+            bubble.textContent = msg;
+            messages.appendChild(bubble);
+            messages.scrollTop = messages.scrollHeight;
+        });
+
+        function setActiveMode(btn) {
+            document.querySelectorAll('#mode-toggle .mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        document.body.addEventListener('htmx:responseError', function(evt) {
+            if (evt.detail.xhr.status === 401) {
+                const errDiv = document.createElement('div');
+                errDiv.className = 'message assistant';
+                errDiv.textContent = 'Session expirée. Rechargez la page pour vous reconnecter.';
+                messages.appendChild(errDiv);
+                messages.scrollTop = messages.scrollHeight;
+            }
+        });
+    </script>
 </body>
 </html>

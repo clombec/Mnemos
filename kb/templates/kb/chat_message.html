@@ -1,4 +1,3 @@
-<div class="message user">{{ user_message }}</div>
 <div class="message thinking"
      hx-get="{% url 'kb:chat_answer' %}?msg={{ user_message|urlencode }}"
      hx-trigger="load"
